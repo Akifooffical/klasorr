@@ -1,0 +1,795 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gauge</title>
+<meta name="description" content="Google, Meta ve AI aramalarındaki görünürlüğünü tek skorda ölçen, sıralamanı gösteren ve üste çıkaran görünürlük SaaS prototipi." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..48,400..800&family=Figtree:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
+<style>
+:root{
+  --bg:#FBF7F0; --surface:#FFFFFF; --surface-2:#F4EEE2; --surface-3:#EAE0CE;
+  --ink:#16242E; --ink-soft:#5C6872; --ink-faint:#8A949C; --line:#E7DDCB;
+  --accent:#FF6B4A; --accent-ink:#B23A21; --gold:#E39B1F; --teal:#12A594;
+  --navy:#0C2530; --navy-2:#123441; --navy-line:rgba(255,255,255,.10);
+  --on-navy:#EAF3F2; --on-navy-soft:#9DB3B7;
+  --up:#12A17A; --down:#E0533D; --flat:#8A949C;
+  --shadow:0 1px 2px rgba(20,34,42,.05),0 10px 26px -14px rgba(20,34,42,.20);
+  --shadow-lg:0 26px 64px -26px rgba(12,37,48,.38);
+  --r:16px; --r-sm:11px; --maxw:1180px;
+  --cat-health:#12A594;--cat-law:#5B6EE1;--cat-hotel:#E39B1F;--cat-service:#E4703A;--cat-taxi:#D9A70F;--cat-museum:#B5539C;--cat-tour:#FF6B4A;
+}
+:root:not([data-theme="light"]){
+  @media (prefers-color-scheme:dark){
+    --bg:#081019; --surface:#0F1D27; --surface-2:#142530; --surface-3:#1D3140;
+    --ink:#ECF3F2; --ink-soft:#94A6AF; --ink-faint:#6A7C86; --line:#22333F;
+    --accent:#FF7A5F; --accent-ink:#FFB9A8; --gold:#F2B441; --teal:#26C6B2;
+    --navy:#060E15; --navy-2:#0C1E27; --navy-line:rgba(255,255,255,.08);
+    --on-navy:#EAF3F2; --on-navy-soft:#8FA6AB;
+    --up:#2BBE8E; --down:#FF6A50; --flat:#7C8E98;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 12px 32px -16px rgba(0,0,0,.65);
+    --shadow-lg:0 30px 72px -30px rgba(0,0,0,.72);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#081019; --surface:#0F1D27; --surface-2:#142530; --surface-3:#1D3140;
+  --ink:#ECF3F2; --ink-soft:#94A6AF; --ink-faint:#6A7C86; --line:#22333F;
+  --accent:#FF7A5F; --accent-ink:#FFB9A8; --gold:#F2B441; --teal:#26C6B2;
+  --navy:#060E15; --navy-2:#0C1E27; --navy-line:rgba(255,255,255,.08);
+  --on-navy:#EAF3F2; --on-navy-soft:#8FA6AB;
+  --up:#2BBE8E; --down:#FF6A50; --flat:#7C8E98;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 12px 32px -16px rgba(0,0,0,.65);
+  --shadow-lg:0 30px 72px -30px rgba(0,0,0,.72);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Figtree",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;position:relative}
+h1,h2,h3,h4{font-family:"Bricolage Grotesque","Figtree",system-ui,sans-serif;font-weight:700;line-height:1.06;text-wrap:balance;margin:0;letter-spacing:-.02em}
+.mono{font-family:"Space Mono",ui-monospace,monospace}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer}
+:focus-visible{outline:2.5px solid var(--accent);outline-offset:2px;border-radius:6px}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+.eyebrow{font-family:"Space Mono",monospace;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-soft)}
+.tnum{font-variant-numeric:tabular-nums}
+
+/* animated background */
+#bgfx{position:fixed;inset:0;width:100%;height:100%;z-index:-2;pointer-events:none}
+.bg-veil{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden;background:
+  radial-gradient(1200px 820px at 82% -8%,color-mix(in srgb,var(--accent) 6%,transparent),transparent 62%),
+  radial-gradient(1000px 820px at -5% 106%,color-mix(in srgb,var(--teal) 5%,transparent),transparent 58%)}
+.bg-veil::before,.bg-veil::after{content:"";position:absolute;border-radius:50%;filter:blur(90px);opacity:.45}
+.bg-veil::before{width:54vw;height:54vw;left:-12vw;top:-14vw;background:radial-gradient(circle,color-mix(in srgb,var(--gold) 13%,transparent),transparent 70%);animation:drift1 30s ease-in-out infinite}
+.bg-veil::after{width:48vw;height:48vw;right:-10vw;bottom:-12vw;background:radial-gradient(circle,color-mix(in srgb,var(--teal) 12%,transparent),transparent 70%);animation:drift2 38s ease-in-out infinite}
+@keyframes drift1{0%,100%{transform:translate(0,0)}50%{transform:translate(6vw,4vw)}}
+@keyframes drift2{0%,100%{transform:translate(0,0)}50%{transform:translate(-5vw,-4vw)}}
+
+/* header */
+header.site{position:sticky;top:0;z-index:60;background:color-mix(in srgb,var(--bg) 80%,transparent);backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}
+.nav{display:flex;align-items:center;gap:18px;height:66px}
+.brand{display:flex;align-items:center;gap:10px;font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:22px;letter-spacing:-.03em}
+.brand .disc{width:30px;height:30px;flex:none}
+.tabs{display:flex;gap:4px;margin-left:12px;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:4px}
+.tab{border:0;background:transparent;color:var(--ink-soft);font-size:14px;font-weight:600;padding:8px 14px;border-radius:9px}
+.tab[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.tab:hover{color:var(--ink)}
+.nav .right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.icon-btn{width:38px;height:38px;display:grid;place-items:center;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.icon-btn:hover{background:var(--surface-2)}
+.btn{border:1px solid transparent;border-radius:11px;padding:10px 16px;font-weight:600;font-size:14.5px;transition:transform .12s,box-shadow .2s,filter .2s;white-space:nowrap}
+.btn-primary{background:var(--accent);color:#fff;box-shadow:0 8px 20px -8px color-mix(in srgb,var(--accent) 70%,transparent)}
+.btn-primary:hover{transform:translateY(-1px)}
+.btn-ghost{background:var(--surface);border-color:var(--line);color:var(--ink)}
+.btn-ghost:hover{background:var(--surface-2)}
+@media(max-width:940px){.tabs{display:none}}
+
+/* hero */
+.hero{position:relative;overflow:hidden;border-bottom:1px solid var(--line)}
+.hero .wrap{display:grid;grid-template-columns:1.08fr .92fr;gap:44px;align-items:center;padding:66px 24px 74px}
+.tagpill{display:inline-flex;align-items:center;gap:8px;font-family:"Space Mono",monospace;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);background:var(--surface);border:1px solid var(--line);padding:7px 12px;border-radius:100px}
+.tagpill .dot{width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 0 4px color-mix(in srgb,var(--teal) 28%,transparent)}
+.hero h1{font-size:clamp(38px,5.4vw,62px);margin:20px 0 0;font-weight:800}
+.hero h1 .hl{color:transparent;background:linear-gradient(100deg,var(--accent),var(--gold));-webkit-background-clip:text;background-clip:text}
+.hero p.sub{color:var(--ink-soft);font-size:18px;max-width:46ch;margin:18px 0 0}
+.hero-cta{display:flex;gap:12px;margin-top:26px;flex-wrap:wrap}
+.hero-mini{display:flex;gap:26px;flex-wrap:wrap;margin-top:30px;padding-top:22px;border-top:1px solid var(--line)}
+.hero-mini .s b{font-family:"Bricolage Grotesque",sans-serif;font-size:24px;display:block;line-height:1}
+.hero-mini .s span{font-size:12.5px;color:var(--ink-soft)}
+/* hero gauge card */
+.gauge-card{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:26px;box-shadow:var(--shadow-lg);position:relative}
+.gauge-card h3{font-size:15px;color:var(--ink-soft);font-weight:600;display:flex;justify-content:space-between;align-items:center}
+.gauge-wrap{position:relative;display:grid;place-items:center;margin:6px 0}
+.gauge-wrap canvas{width:260px;max-width:100%;height:150px}
+.gauge-center{position:absolute;top:58%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none}
+.gauge-center b{font-family:"Bricolage Grotesque",sans-serif;font-size:46px;line-height:1;display:block}
+.gauge-center span{font-size:12px;color:var(--ink-soft);font-family:"Space Mono",monospace}
+.subscores{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px}
+.subscore{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:12px}
+.subscore .lab{font-size:12px;color:var(--ink-soft);display:flex;align-items:center;gap:6px}
+.subscore .val{font-family:"Bricolage Grotesque",sans-serif;font-size:22px;margin-top:4px}
+.bar{height:5px;border-radius:4px;background:var(--surface-3);margin-top:7px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:4px}
+@media(max-width:860px){.hero .wrap{grid-template-columns:1fr;padding-bottom:56px}.gauge-card{order:-1}}
+
+/* sections / panels */
+.view{padding:56px 0}
+.view[hidden]{display:none}
+.section-head{max-width:60ch}
+.section-head h2{font-size:clamp(26px,3.4vw,38px)}
+.section-head p{color:var(--ink-soft);font-size:17px;margin-top:12px}
+.grid{display:grid;gap:18px}
+
+/* generic card */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+.card-h{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.card-h h3{font-size:16px}
+.card-h .hint{font-size:12.5px;color:var(--ink-soft)}
+.card-b{padding:16px 18px}
+
+/* delta */
+.delta{font-family:"Space Mono",monospace;font-size:12.5px;font-weight:700;display:inline-flex;align-items:center;gap:3px}
+.delta.up{color:var(--up)} .delta.down{color:var(--down)} .delta.flat{color:var(--flat)}
+
+/* channel rows */
+.chan{display:grid;grid-template-columns:34px 1fr auto 84px;gap:12px;align-items:center;padding:12px 6px;border-bottom:1px solid var(--line)}
+.chan:last-child{border-bottom:0}
+.chan .ico{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;color:#fff;font-family:"Space Mono",monospace;font-weight:700;font-size:13px}
+.chan .nm{font-weight:600;font-size:14.5px}
+.chan .nm small{display:block;color:var(--ink-soft);font-weight:400;font-size:12px}
+.chan .pos{font-family:"Bricolage Grotesque",sans-serif;font-size:18px;text-align:right;white-space:nowrap}
+.chan .spark{justify-self:end}
+
+/* dash layout */
+.dash{display:grid;grid-template-columns:1.15fr 1fr;gap:18px;margin-top:14px}
+.dash .col{display:grid;gap:18px;align-content:start}
+@media(max-width:900px){.dash{grid-template-columns:1fr}}
+
+/* leaderboard */
+.lb{display:flex;flex-direction:column}
+.lb .row{display:grid;grid-template-columns:30px 1fr auto auto;gap:12px;align-items:center;padding:11px 6px;border-bottom:1px solid var(--line);border-radius:8px}
+.lb .row:last-child{border-bottom:0}
+.lb .row.you{background:color-mix(in srgb,var(--accent) 9%,transparent);border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);padding-left:10px;padding-right:10px}
+.lb .rk{font-family:"Space Mono",monospace;font-weight:700;color:var(--ink-soft)}
+.lb .row.you .rk{color:var(--accent)}
+.lb .co{font-weight:600;font-size:14.5px}
+.lb .co small{color:var(--ink-soft);font-weight:400;font-size:12px}
+.lb .sc{font-family:"Bricolage Grotesque",sans-serif;font-size:18px;text-align:right}
+.scorebar{width:70px;height:6px;border-radius:4px;background:var(--surface-3);overflow:hidden}
+.scorebar i{display:block;height:100%}
+.sortbtn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 10px;font-size:12.5px;font-weight:600;color:var(--ink-soft)}
+.sortbtn[aria-pressed="true"]{color:var(--ink);border-color:var(--ink-faint)}
+
+/* geo grid */
+.geo{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.geo .t{aspect-ratio:1;border-radius:8px;display:grid;place-items:center;font-family:"Space Mono",monospace;font-weight:700;font-size:13px;color:#fff;position:relative;cursor:default;transition:transform .12s}
+.geo .t:hover{transform:scale(1.08);z-index:2;box-shadow:var(--shadow)}
+.geo .t.you{outline:2.5px solid var(--ink);outline-offset:1px}
+.geo-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;font-size:12px;color:var(--ink-soft)}
+.geo-legend .k{display:inline-flex;align-items:center;gap:6px}
+.geo-legend .sw{width:12px;height:12px;border-radius:3px}
+
+/* AI prompts */
+.aiprompt{border:1px solid var(--line);border-radius:12px;padding:13px 14px;margin-bottom:10px;background:var(--surface-2)}
+.aiprompt:last-child{margin-bottom:0}
+.aiprompt .q{font-weight:600;font-size:14px;display:flex;gap:8px;align-items:center}
+.aiprompt .q .qi{color:var(--accent);flex:none}
+.engines{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.eng{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:5px 10px;border-radius:100px;border:1px solid var(--line);background:var(--surface)}
+.eng.yes{color:var(--up);border-color:color-mix(in srgb,var(--up) 40%,transparent);background:color-mix(in srgb,var(--up) 10%,transparent)}
+.eng.no{color:var(--ink-faint)}
+.eng .d{width:7px;height:7px;border-radius:50%;background:currentColor}
+
+/* actions */
+.action{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start;padding:13px 0;border-bottom:1px solid var(--line)}
+.action:last-child{border-bottom:0}
+.action .chk{width:22px;height:22px;border-radius:7px;border:2px solid var(--line);display:grid;place-items:center;color:transparent;cursor:pointer;flex:none;margin-top:2px}
+.action .chk[aria-pressed="true"]{background:var(--teal);border-color:var(--teal);color:#fff}
+.action .txt h4{font-size:14.5px}
+.action .txt p{font-size:13px;color:var(--ink-soft);margin:3px 0 0}
+.action .meta{text-align:right;white-space:nowrap}
+.pill{font-family:"Space Mono",monospace;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;padding:3px 8px;border-radius:6px}
+.pill.hi{color:var(--accent);background:color-mix(in srgb,var(--accent) 13%,transparent)}
+.pill.md{color:var(--gold);background:color-mix(in srgb,var(--gold) 15%,transparent)}
+.lift{display:block;font-family:"Bricolage Grotesque",sans-serif;font-weight:700;color:var(--up);font-size:16px;margin-top:6px}
+
+/* templates */
+.tmpls{display:flex;flex-wrap:wrap;gap:8px}
+.tmpl{border:1px dashed var(--line);background:var(--surface);border-radius:100px;padding:8px 13px;font-size:13px;font-weight:600;color:var(--ink-soft);display:inline-flex;align-items:center;gap:7px}
+.tmpl[aria-pressed="true"]{border-style:solid;border-color:var(--teal);color:var(--ink);background:color-mix(in srgb,var(--teal) 8%,transparent)}
+.tmpl .x{width:16px;height:16px;border-radius:50%;background:var(--surface-3);display:grid;place-items:center;font-size:11px}
+.tmpl[aria-pressed="true"] .x{background:var(--teal);color:#fff}
+
+/* discover (compact) */
+.disc-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line);background:var(--surface-2)}
+.chipset{display:flex;gap:8px;flex-wrap:wrap}
+.city,.catp{border:1px solid var(--line);background:var(--surface);border-radius:100px;padding:7px 13px;font-size:13.5px;font-weight:600;color:var(--ink-soft);display:inline-flex;align-items:center;gap:7px}
+.city[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.catp[aria-pressed="true"]{color:var(--ink);box-shadow:inset 0 0 0 1.5px currentColor}
+.catp .ci{width:16px;height:16px;border-radius:5px;display:grid;place-items:center;color:#fff}
+.disc-body{display:grid;grid-template-columns:1fr 1fr;min-height:460px}
+.dlist{border-right:1px solid var(--line);max-height:520px;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:10px}
+.dcard{border:1px solid var(--line);border-radius:11px;padding:13px;display:grid;grid-template-columns:auto 1fr auto;gap:11px;align-items:start;cursor:pointer;transition:.15s}
+.dcard:hover,.dcard.hot{border-color:var(--ink-faint);box-shadow:var(--shadow);transform:translateY(-1px)}
+.dcard .pi{width:36px;height:36px;border-radius:9px;display:grid;place-items:center;color:#fff}
+.dcard h4{font-size:14.5px;margin:0}
+.dcard .m{font-size:12px;color:var(--ink-soft);margin-top:4px;display:flex;gap:10px;flex-wrap:wrap}
+.dcard .rt{font-weight:700;color:var(--ink);display:inline-flex;gap:3px;align-items:center}
+.dcard .rt svg{color:var(--gold)}
+.dcard .rgt{text-align:right;display:flex;flex-direction:column;gap:5px;align-items:flex-end}
+.badge{font-family:"Space Mono",monospace;font-size:10px;letter-spacing:.04em;text-transform:uppercase;padding:3px 7px;border-radius:6px;font-weight:700}
+.badge.open{color:var(--teal);background:color-mix(in srgb,var(--teal) 14%,transparent)}
+.badge.spon{color:var(--gold);background:color-mix(in srgb,var(--gold) 15%,transparent)}
+.dist{font-family:"Space Mono",monospace;font-size:12px;color:var(--ink-soft)}
+.dmap{position:relative;background:var(--surface-2);overflow:hidden}
+.dmap canvas{position:absolute;inset:0}
+.pin{position:absolute;transform:translate(-50%,-100%);cursor:pointer;z-index:2}
+.pin .dm{width:24px;height:24px;border-radius:50% 50% 50% 2px;transform:rotate(45deg);display:grid;place-items:center;border:2px solid var(--surface);box-shadow:0 4px 9px -2px rgba(0,0,0,.4)}
+.pin .dm span{transform:rotate(-45deg);color:#fff;font-family:"Space Mono",monospace;font-size:10px;font-weight:700}
+.pin.hot .dm{transform:rotate(45deg) scale(1.25)}
+.you-dot{position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);width:20px;height:20px;border-radius:50%;background:var(--accent);border:3px solid var(--surface);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 35%,transparent);z-index:1}
+@media(max-width:820px){.disc-body{grid-template-columns:1fr}.dlist{border-right:0;border-bottom:1px solid var(--line)}.dmap{min-height:320px}}
+
+/* market cards */
+.mkt-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:14px}
+@media(max-width:1000px){.mkt-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.mkt-grid{grid-template-columns:1fr}}
+.mcard{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px}
+.mcard .cat{font-family:"Space Mono",monospace;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft)}
+.mcard h4{font-size:16px;margin:6px 0 2px}
+.mcard .pr{font-family:"Space Mono",monospace;font-size:13px;color:var(--ink);font-weight:700}
+.mcard .gap{font-size:12.5px;color:var(--ink-soft);margin-top:9px;padding-top:9px;border-top:1px dashed var(--line)}
+.mcard .gap b{color:var(--down)}
+/* matrix */
+.matrix{width:100%;border-collapse:collapse;font-size:13.5px;min-width:640px}
+.matrix th,.matrix td{padding:11px 12px;text-align:center;border-bottom:1px solid var(--line)}
+.matrix th:first-child,.matrix td:first-child{text-align:left;font-weight:600}
+.matrix thead th{font-size:12px;color:var(--ink-soft);font-weight:600;position:sticky;top:0}
+.matrix .gcol{background:color-mix(in srgb,var(--accent) 8%,transparent);font-weight:700}
+.matrix .yes{color:var(--up);font-weight:700}
+.matrix .no{color:var(--ink-faint)}
+.matrix .part{color:var(--gold)}
+.tblscroll{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+
+/* pricing */
+.price-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:14px}
+@media(max-width:980px){.price-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:520px){.price-grid{grid-template-columns:1fr}}
+.plan{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:8px}
+.plan.feat{border-color:var(--accent);box-shadow:0 20px 50px -24px color-mix(in srgb,var(--accent) 60%,transparent);position:relative}
+.plan.feat::before{content:"En popüler";position:absolute;top:-11px;left:22px;background:var(--accent);color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:100px;font-family:"Space Mono",monospace}
+.plan .pn{font-family:"Bricolage Grotesque",sans-serif;font-size:19px;font-weight:700}
+.plan .pp{font-family:"Bricolage Grotesque",sans-serif;font-size:34px;font-weight:800;line-height:1}
+.plan .pp small{font-size:13px;color:var(--ink-soft);font-weight:400}
+.plan ul{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.plan li{font-size:13.5px;color:var(--ink-soft);display:flex;gap:8px;align-items:flex-start}
+.plan li svg{color:var(--teal);flex:none;margin-top:3px}
+.plan .btn{margin-top:auto;text-align:center}
+
+/* biz band */
+.biz{background:linear-gradient(160deg,var(--navy),var(--navy-2));color:var(--on-navy);border-radius:24px;padding:44px;position:relative;overflow:hidden;margin-top:30px}
+.biz h2{color:#fff}
+.biz p{color:var(--on-navy-soft);max-width:60ch;margin-top:12px}
+.biz .deco{position:absolute;right:-70px;top:-70px;width:320px;height:320px;border-radius:50%;background:radial-gradient(circle,rgba(255,107,74,.25),transparent 70%)}
+
+footer.site{border-top:1px solid var(--line);padding:38px 0;margin-top:20px}
+.foot{display:flex;flex-wrap:wrap;gap:18px;justify-content:space-between;color:var(--ink-soft);font-size:13.5px}
+.note{font-size:12px;color:var(--ink-faint);margin-top:14px;max-width:80ch}
+
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+
+
+<canvas id="bgfx" aria-hidden="true"></canvas>
+<div class="bg-veil" aria-hidden="true"></div>
+
+<header class="site">
+  <div class="wrap nav">
+    <a class="brand" href="#" data-go="discover" aria-label="Gauge">
+      <svg class="disc" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <circle cx="16" cy="16" r="15" fill="#0C2530"/>
+        <path d="M6 20a10 10 0 0 1 20 0" stroke="#EAF3F2" stroke-opacity=".3" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+        <path d="M6 20a10 10 0 0 1 6.5-9.4" stroke="#12A594" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+        <path d="M12.5 10.6A10 10 0 0 1 22 13" stroke="#E39B1F" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+        <path d="M16 20 22 13" stroke="#FF6B4A" stroke-width="2.4" stroke-linecap="round"/>
+        <circle cx="16" cy="20" r="2.3" fill="#EAF3F2"/>
+      </svg>
+      Gauge
+    </a>
+    <div class="tabs" role="tablist" aria-label="Görünümler">
+      <button class="tab" role="tab" data-view="discover" aria-selected="false">Keşfet</button>
+      <button class="tab" role="tab" data-view="dash" aria-selected="true">İşletme Paneli</button>
+      <button class="tab" role="tab" data-view="market" aria-selected="false">Pazar &amp; Rakipler</button>
+      <button class="tab" role="tab" data-view="pricing" aria-selected="false">Fiyatlar</button>
+    </div>
+    <div class="right">
+      <button class="icon-btn" id="theme" aria-label="Tema değiştir" title="Tema">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v1M12 20v1M4.2 4.2l.7.7M18.4 18.4l.7.7M3 12h1M20 12h1M4.2 19.8l.7-.7M18.4 5.6l.7-.7"/><circle cx="12" cy="12" r="4"/></svg>
+      </button>
+      <button class="btn btn-primary" data-go="pricing">Ücretsiz dene</button>
+    </div>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <span class="tagpill"><span class="dot"></span>Google · Meta · AI aramaları — tek skorda</span>
+      <h1>Aramalarda <span class="hl">kaçıncı sıradasın?</span> Gauge tek panelde gösterir ve üste taşır.</h1>
+      <p class="sub">Google yerel paket ve haritalar, Meta reklamları ve ChatGPT/Perplexity/Gemini gibi AI motorları — hepsindeki görünürlüğünü tek "Gauge Skoru"nda ölçer, rakiplerinle kıyaslar ve satışa çeviren aksiyon planını çıkarır.</p>
+      <div class="hero-cta">
+        <button class="btn btn-primary" data-go="dash">Panelimi gör</button>
+        <button class="btn btn-ghost" data-go="market">Rakip &amp; boşluk analizi</button>
+      </div>
+      <div class="hero-mini">
+        <div class="s"><b class="mono">%1,2</b><span>işletme AI'da önerilir</span></div>
+        <div class="s"><b class="mono">%35,9</b><span>Google 3'lüsünde görünür</span></div>
+        <div class="s"><b class="mono">9+</b><span>kanal tek skorda</span></div>
+      </div>
+    </div>
+    <div class="gauge-card">
+      <h3>Gauge Skoru <span class="delta up" id="scoreDelta">▲ +6 / 30 gün</span></h3>
+      <div class="gauge-wrap">
+        <canvas id="gauge" width="520" height="300" role="img" aria-label="Genel görünürlük skoru 68 / 100"></canvas>
+        <div class="gauge-center"><b id="gaugeNum">0</b><span>/ 100 görünürlük</span></div>
+      </div>
+      <div class="subscores">
+        <div class="subscore"><div class="lab"><span style="width:8px;height:8px;border-radius:2px;background:#4285F4;display:inline-block"></span>Google</div><div class="val tnum">74</div><div class="bar"><i style="width:74%;background:#4285F4"></i></div></div>
+        <div class="subscore"><div class="lab"><span style="width:8px;height:8px;border-radius:2px;background:#C13584;display:inline-block"></span>Meta</div><div class="val tnum">61</div><div class="bar"><i style="width:61%;background:#C13584"></i></div></div>
+        <div class="subscore"><div class="lab"><span style="width:8px;height:8px;border-radius:2px;background:var(--teal);display:inline-block"></span>AI</div><div class="val tnum">42</div><div class="bar"><i style="width:42%;background:var(--teal)"></i></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<main class="wrap">
+
+  <!-- ============ DASHBOARD ============ -->
+  <section class="view" id="view-dash" role="tabpanel">
+    <div class="section-head">
+      <span class="eyebrow">İşletme Paneli · Boğaz Ağız &amp; Diş Kliniği</span>
+      <h2>Kaçıncı sıradasın, kim önünde, nasıl üste çıkarsın.</h2>
+      <p>Örnek işletme için canlı panel görünümü. Kanal sıralaman, kategori lider tablosu, konum ısı haritası, AI görünürlüğün ve önceliklendirilmiş aksiyon planın.</p>
+    </div>
+
+    <div class="dash">
+      <div class="col">
+        <!-- channel ranks -->
+        <div class="card">
+          <div class="card-h"><h3>Kanal sıralaman — "Kaçıncı sıradayım?"</h3><span class="hint">son 30 gün</span></div>
+          <div class="card-b" id="chanList" style="padding-top:4px;padding-bottom:4px"></div>
+        </div>
+        <!-- geo grid -->
+        <div class="card">
+          <div class="card-h"><h3>Konuma göre sıralaman</h3><span class="hint">"en iyi diş kliniği" · semtlere göre</span></div>
+          <div class="card-b">
+            <div class="geo" id="geo"></div>
+            <div class="geo-legend">
+              <span class="k"><span class="sw" style="background:var(--up)"></span>İlk 3</span>
+              <span class="k"><span class="sw" style="background:var(--gold)"></span>4–10</span>
+              <span class="k"><span class="sw" style="background:var(--down)"></span>10+ / görünmüyor</span>
+              <span class="k"><span class="sw" style="background:var(--surface-3)"></span>◻ konumun</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col">
+        <!-- leaderboard -->
+        <div class="card">
+          <div class="card-h">
+            <h3>Kategoride kim öne çıkıyor?</h3>
+            <div style="display:flex;gap:6px">
+              <button class="sortbtn" data-sort="score" aria-pressed="true">Skora göre</button>
+              <button class="sortbtn" data-sort="reviews" aria-pressed="false">Yoruma göre</button>
+            </div>
+          </div>
+          <div class="card-b lb" id="lb"></div>
+        </div>
+        <!-- AI visibility -->
+        <div class="card">
+          <div class="card-h"><h3>AI seni öneriyor mu?</h3><span class="hint">gerçek sorgu şablonları</span></div>
+          <div class="card-b" id="aiList"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- actions + templates -->
+    <div class="dash" style="margin-top:0">
+      <div class="col">
+        <div class="card">
+          <div class="card-h"><h3>Üste çıkma &amp; satış aksiyon planı</h3><span class="hint">etkiye göre sıralı</span></div>
+          <div class="card-b" id="actions"></div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card">
+          <div class="card-h"><h3>Arama &amp; takip şablonları</h3><span class="hint">izlemeye ekle</span></div>
+          <div class="card-b">
+            <p style="font-size:13.5px;color:var(--ink-soft);margin:0 0 12px">Kategorine hazır sorgu şablonları — seçtiklerin Google, Meta ve AI motorlarında otomatik izlenir.</p>
+            <div class="tmpls" id="tmpls"></div>
+            <div style="margin-top:14px;font-family:'Space Mono',monospace;font-size:12.5px;color:var(--ink-soft)"><b id="tmplCount" style="color:var(--ink)">3</b> şablon izleniyor · haftalık rapor</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-h"><h3>Bu ay ne değişti?</h3></div>
+          <div class="card-b" style="display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;gap:10px;align-items:center"><span class="delta up">▲</span><span style="font-size:13.5px">ChatGPT'de "İstanbul diş implant" sorgusunda <b>ilk kez kaynak</b> gösterildin.</span></div>
+            <div style="display:flex;gap:10px;align-items:center"><span class="delta up">▲</span><span style="font-size:13.5px">Google Haritalar'da <b>#5 → #4</b> yükseldin (yeni 34 yorum).</span></div>
+            <div style="display:flex;gap:10px;align-items:center"><span class="delta down">▼</span><span style="font-size:13.5px">Meta reklam CTR'ın <b>%4,4 → %3,8</b> düştü — görsel yenile.</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ DISCOVER ============ -->
+  <section class="view" id="view-discover" role="tabpanel" hidden>
+    <div class="section-head">
+      <span class="eyebrow">Tüketici Tarafı · Talep motoru</span>
+      <h2>Gauge'ın keşif yüzü — müşteri seni tam ararken bulur.</h2>
+      <p>İnsanlar konumlarına göre hizmet arar; işletmeler burada görünür. Bu taraf, panelini besleyen gerçek talep verisini üretir — rakiplerin çoğunda olmayan çift taraflı avantaj.</p>
+    </div>
+    <div class="card" style="margin-top:14px;overflow:hidden">
+      <div class="disc-toolbar">
+        <div class="chipset" id="cities" role="group" aria-label="Şehir"></div>
+        <div class="chipset" id="cats" role="group" aria-label="Kategori" style="margin-left:auto"></div>
+      </div>
+      <div class="disc-body">
+        <div class="dlist" id="dlist"></div>
+        <div class="dmap" id="dmap">
+          <canvas id="dmapbg" width="800" height="900" aria-hidden="true"></canvas>
+          <div class="you-dot" title="Buradasın"></div>
+          <div id="pins"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MARKET ============ -->
+  <section class="view" id="view-market" role="tabpanel" hidden>
+    <div class="section-head">
+      <span class="eyebrow">Pazar Haritası · Ağustos 2026</span>
+      <h2>Bu alanda kimler var — ve nerede eksik kalıyorlar.</h2>
+      <p>Dünyadaki çalışan sistemler üç kampa ayrılıyor: yerel SEO takip, listeleme/itibar platformları ve yeni AI görünürlük (GEO/AEO) araçları. Hiçbiri üçünü + tüketici talebini tek çatıda birleştirmiyor. Gauge'ın boşluğu bu.</p>
+    </div>
+    <div class="mkt-grid">
+      <div class="mcard"><div class="cat">Yerel SEO takip</div><h4>BrightLocal</h4><div class="pr">$39–59/ay</div><div class="gap"><b>Eksik:</b> AI motor görünürlüğü yok; sadece işletme tarafı.</div></div>
+      <div class="mcard"><div class="cat">Yerel SEO takip</div><h4>Semrush Local</h4><div class="pr">$30–60/ay · lokasyon</div><div class="gap"><b>Eksik:</b> pahalı, karmaşık; AEO zayıf, tüketici tarafı yok.</div></div>
+      <div class="mcard"><div class="cat">Listeleme</div><h4>Moz Local</h4><div class="pr">~$16/ay · lokasyon</div><div class="gap"><b>Eksik:</b> sadece dizin senkronu; sıralama/AI takibi yok.</div></div>
+      <div class="mcard"><div class="cat">Listeleme + itibar</div><h4>Yext</h4><div class="pr">$199/yıl+</div><div class="gap"><b>Eksik:</b> kurumsal, yıllık sözleşme; AI görünürlük yeni.</div></div>
+      <div class="mcard"><div class="cat">İtibar + mesaj</div><h4>Birdeye</h4><div class="pr">$299–449/ay · lokasyon</div><div class="gap"><b>Eksik:</b> KOBİ'ye çok pahalı; AI/GEO tarafı zayıf.</div></div>
+      <div class="mcard"><div class="cat">AI görünürlük (GEO)</div><h4>Profound</h4><div class="pr">$99–399/ay</div><div class="gap"><b>Eksik:</b> kurumsal odak; yerel paket/harita &amp; Meta yok.</div></div>
+      <div class="mcard"><div class="cat">AI görünürlük (GEO)</div><h4>Peec AI</h4><div class="pr">€89–499/ay</div><div class="gap"><b>Eksik:</b> sadece AI motorları; yerel SEO &amp; reklam yok.</div></div>
+      <div class="mcard"><div class="cat">AI izleme</div><h4>Otterly.AI</h4><div class="pr">$29/ay</div><div class="gap"><b>Eksik:</b> hafif izleme; aksiyon, yerel &amp; reklam katmanı yok.</div></div>
+    </div>
+
+    <h3 style="margin:34px 0 12px;font-size:20px">Kapsam karşılaştırması</h3>
+    <div class="tblscroll">
+      <table class="matrix">
+        <thead><tr>
+          <th>Yetenek</th><th>BrightLocal</th><th>Profound</th><th>Birdeye</th><th class="gcol">Gauge</th>
+        </tr></thead>
+        <tbody>
+          <tr><td>Google yerel paket &amp; harita sıralama</td><td class="yes">✓</td><td class="no">—</td><td class="part">kısmi</td><td class="gcol yes">✓</td></tr>
+          <tr><td>Konum ısı-ızgarası (geo-grid)</td><td class="yes">✓</td><td class="no">—</td><td class="no">—</td><td class="gcol yes">✓</td></tr>
+          <tr><td>Meta / sosyal reklam görünürlüğü</td><td class="no">—</td><td class="no">—</td><td class="part">kısmi</td><td class="gcol yes">✓</td></tr>
+          <tr><td>AI motor görünürlüğü (ChatGPT/Perplexity/Gemini)</td><td class="no">—</td><td class="yes">✓</td><td class="no">—</td><td class="gcol yes">✓</td></tr>
+          <tr><td>Tek birleşik skor</td><td class="no">—</td><td class="part">kısmi</td><td class="no">—</td><td class="gcol yes">✓</td></tr>
+          <tr><td>Tüketici keşif tarafı (talep verisi)</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="gcol yes">✓</td></tr>
+          <tr><td>Otomatik aksiyon &amp; satış önerileri</td><td class="part">kısmi</td><td class="yes">✓</td><td class="part">kısmi</td><td class="gcol yes">✓</td></tr>
+          <tr><td>KOBİ dostu giriş fiyatı</td><td class="yes">✓</td><td class="no">—</td><td class="no">—</td><td class="gcol yes">✓</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="biz">
+      <div class="deco" aria-hidden="true"></div>
+      <span class="eyebrow" style="color:var(--gold)">Gauge'ın konumu</span>
+      <h2>Yerel + reklam + AI görünürlüğü, tek panelde — çift taraflı.</h2>
+      <p>Rakipler ya yerel SEO'ya ya da AI görünürlüğe bakıyor, hepsi tek taraflı (yalnız işletme). Gauge tüketici keşif tarafını da işletir; bu, gerçek arama talebini elinde tutar ve işletmelere "seni tam ararken şu sorguda görünmüyorsun" gibi kesin, aksiyona dönük içgörü verir. Moat: taklit edilmesi zor olan iki taraflı veri döngüsü.</p>
+    </div>
+  </section>
+
+  <!-- ============ PRICING ============ -->
+  <section class="view" id="view-pricing" role="tabpanel" hidden>
+    <div class="section-head">
+      <span class="eyebrow">Fiyatlandırma · USD</span>
+      <h2>Otterly kadar erişilebilir, Profound kadar derin.</h2>
+      <p>Tüketici keşif tarafı işletmeler için her zaman ücretsiz. İşletme görünürlük paneli aylık abonelik; yıllık ödemede 2 ay bedava.</p>
+    </div>
+    <div class="price-grid">
+      <div class="plan">
+        <div class="pn">Free</div>
+        <div class="pp">$0<small>/ay</small></div>
+        <p style="font-size:13px;color:var(--ink-soft);margin:0">Keşiften listelen, görünür ol.</p>
+        <ul>
+          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 12l5 5L20 6"/></svg>Keşfet listelemesi</li>
+          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 12l5 5L20 6"/></svg>Temel Gauge Skoru</li>
+          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 12l5 5L20 6"/></svg>1 arama şablonu</li>
+        </ul>
+        <button class="btn btn-ghost">Başla</button>
+      </div>
+      <div class="plan">
+        <div class="pn">Starter</div>
+        <div class="pp">$29<small>/ay</small></div>
+        <p style="font-size:13px;color:var(--ink-soft);margin:0">Tek konumlu işletmeler.</p>
+        <ul>
+          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 12l5 5L20 6"/></svg>Google yerel + harita sıralama</li>
+          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 12l5 5L20 6"/></svg>AI görünürlük (2 motor)</li>
+          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 12l5 5L20 6"/></svg>10 şablon · haftalık rapor</li>
+        </ul>
+        <button class="btn btn-ghost">Seç</button>
+      </div>
+      <div class="plan feat">
+        <div class="pn">Growth</div>
+        <div class="pp">$89<small>/ay</small></div>
+        <p style="font-size:13px;color:var(--ink-soft);margin:0">Büyüyen KOBİ'ler için tam kapsam.</p>
+        <ul>
+          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 12l5 5L20 6"/></svg>Geo-grid ısı haritası</li>
+          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 12l5 5L20 6"/></svg>AI görünürlük (6 motor) + rakip kıyas</li>
+          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 12l5 5L20 6"/></svg>Meta reklam görünürlüğü</li>
+          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 12l5 5L20 6"/></svg>Aksiyon planı + otomasyon</li>
+        </ul>
+        <button class="btn btn-primary">Seç</button>
+      </div>
+      <div class="plan">
+        <div class="pn">Agency</div>
+        <div class="pp">$249<small>/ay</small></div>
+        <p style="font-size:13px;color:var(--ink-soft);margin:0">Ajanslar &amp; çok konumlu markalar.</p>
+        <ul>
+          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 12l5 5L20 6"/></svg>25 konuma kadar</li>
+          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 12l5 5L20 6"/></svg>Beyaz etiket rapor + API</li>
+          <li><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 12l5 5L20 6"/></svg>Öncelikli destek</li>
+        </ul>
+        <button class="btn btn-ghost">Görüşelim</button>
+      </div>
+    </div>
+    <p class="note">Fiyatlar kavram amaçlı, gerçek rakip aralıklarına göre konumlandırılmıştır (Otterly ~$29, Profound $99–399, BrightLocal $39–59, Peec €89–499, Birdeye $299+). Gerçek üründe sıralama/AI verileri Google Business Profile, harita ve AI motor API'leriyle beslenmelidir.</p>
+  </section>
+
+</main>
+
+<footer class="site">
+  <div class="wrap foot">
+    <div>
+      <span class="brand" style="font-size:18px;display:inline-flex;gap:8px;align-items:center">
+        <svg width="22" height="22" viewBox="0 0 32 32" fill="none" aria-hidden="true"><circle cx="16" cy="16" r="15" fill="#0C2530"/><path d="M6 20a10 10 0 0 1 20 0" stroke="#EAF3F2" stroke-opacity=".3" stroke-width="2.4" fill="none"/><path d="M16 20 22 13" stroke="#FF6B4A" stroke-width="2.4" stroke-linecap="round"/><circle cx="16" cy="20" r="2.3" fill="#EAF3F2"/></svg>Gauge
+      </span>
+      <div style="margin-top:6px">Görünürlük ölçüm &amp; büyütme SaaS — kavram prototipi.</div>
+    </div>
+    <div style="max-width:34ch;text-align:right">Google · Meta · ChatGPT · Perplexity · Gemini · AI Overviews — tek skorda.</div>
+  </div>
+</footer>
+
+<script>
+const reduce = matchMedia("(prefers-reduced-motion:reduce)").matches;
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+
+/* ---------- view tabs ---------- */
+function setView(v){
+  $$(".view").forEach(el=>el.hidden = el.id!=="view-"+v);
+  $$(".tab").forEach(t=>t.setAttribute("aria-selected",String(t.dataset.view===v)));
+  window.scrollTo({top:0,behavior:reduce?"auto":"smooth"});
+  if(v==="dash") animateGauge();
+  if(v==="discover") drawDmap();
+}
+$$(".tab").forEach(t=>t.addEventListener("click",()=>setView(t.dataset.view)));
+$$("[data-go]").forEach(b=>b.addEventListener("click",e=>{e.preventDefault();setView(b.dataset.go);}));
+
+/* ---------- animated background (drifting node mesh) ---------- */
+const bg=$("#bgfx"), bx=bg.getContext("2d");
+let W,H,DPR,nodes=[];
+function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+function hexA(hex,a){hex=hex.replace('#','');if(hex.length===3)hex=hex.split('').map(c=>c+c).join('');const n=parseInt(hex,16);return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`;}
+function sizeBg(){DPR=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;bg.width=W*DPR;bg.height=H*DPR;bx.setTransform(DPR,0,0,DPR,0,0);
+  const count=Math.min(52,Math.round(W*H/32000));
+  nodes=Array.from({length:count},()=>({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.14,vy:(Math.random()-.5)*.14,r:Math.random()*1.6+1}));
+}
+function drawBg(){
+  bx.clearRect(0,0,W,H);
+  const acc=css('--accent')||'#FF6B4A', tl=css('--teal')||'#12A594', ink=css('--ink-faint')||'#8A949C';
+  for(let i=0;i<nodes.length;i++){const p=nodes[i];p.x+=p.vx;p.y+=p.vy;
+    if(p.x<-20)p.x=W+20;if(p.x>W+20)p.x=-20;if(p.y<-20)p.y=H+20;if(p.y>H+20)p.y=-20;}
+  for(let i=0;i<nodes.length;i++){for(let j=i+1;j<nodes.length;j++){
+    const a=nodes[i],b=nodes[j],dx=a.x-b.x,dy=a.y-b.y,d=Math.hypot(dx,dy);
+    if(d<145){const al=(1-d/145)*.07;bx.strokeStyle=hexA(ink,al);bx.lineWidth=1;bx.beginPath();bx.moveTo(a.x,a.y);bx.lineTo(b.x,b.y);bx.stroke();}
+  }}
+  nodes.forEach((p,i)=>{const col=i%9===0?acc:i%6===0?tl:ink;bx.fillStyle=hexA(col,i%9===0?.26:.14);bx.beginPath();bx.arc(p.x,p.y,p.r,0,7);bx.fill();});
+}
+function loopBg(){drawBg();requestAnimationFrame(loopBg);}
+sizeBg();
+if(reduce)drawBg();else requestAnimationFrame(loopBg);
+addEventListener("resize",sizeBg);
+
+/* ---------- gauge ---------- */
+const gc=$("#gauge"),g2=gc.getContext("2d"),gNum=$("#gaugeNum"),TARGET=68;
+function drawGauge(val){
+  const w=gc.width,h=gc.height,cx=w/2,cy=h*0.92,R=w*0.40,lw=26;
+  g2.clearRect(0,0,w,h);const s=Math.PI,e=0;
+  g2.lineCap="round";
+  g2.strokeStyle=hexA(css('--surface-3')||'#EAE0CE',1);g2.lineWidth=lw;
+  g2.beginPath();g2.arc(cx,cy,R,s,e);g2.stroke();
+  const grad=g2.createLinearGradient(cx-R,0,cx+R,0);
+  grad.addColorStop(0,css('--down')||'#E0533D');grad.addColorStop(.5,css('--gold')||'#E39B1F');grad.addColorStop(1,css('--teal')||'#12A594');
+  const ang=s+(val/100)*Math.PI;
+  g2.strokeStyle=grad;g2.lineWidth=lw;g2.beginPath();g2.arc(cx,cy,R,s,ang);g2.stroke();
+  // needle
+  const nx=cx+Math.cos(ang)*(R-6),ny=cy+Math.sin(ang)*(R-6);
+  g2.strokeStyle=css('--ink')||'#16242E';g2.lineWidth=4;g2.beginPath();g2.moveTo(cx,cy);g2.lineTo(nx,ny);g2.stroke();
+  g2.fillStyle=css('--ink')||'#16242E';g2.beginPath();g2.arc(cx,cy,7,0,7);g2.fill();
+}
+function animateGauge(){
+  if(reduce){drawGauge(TARGET);gNum.textContent=TARGET;return;}
+  let v=0;const step=()=>{v+=(TARGET-v)*0.08;if(TARGET-v<0.4){v=TARGET;drawGauge(v);gNum.textContent=TARGET;return;}drawGauge(v);gNum.textContent=Math.round(v);requestAnimationFrame(step);};step();
+}
+
+/* ---------- channel ranks ---------- */
+function spark(arr,color){
+  const w=76,h=26,mn=Math.min(...arr),mx=Math.max(...arr),rng=mx-mn||1;
+  const pts=arr.map((v,i)=>`${(i/(arr.length-1))*w},${h-2-((v-mn)/rng)*(h-4)}`).join(' ');
+  const lx=w,ly=h-2-((arr[arr.length-1]-mn)/rng)*(h-4);
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" fill="none"><polyline points="${pts}" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${lx}" cy="${ly}" r="2.6" fill="${color}"/></svg>`;
+}
+const CHAN=[
+ {ic:"G",c:"#4285F4",n:"Google Yerel Paket",s:"harita 3'lüsü",pos:"#3",d:"+2",dc:"up",sp:[6,5,5,4,4,3,3]},
+ {ic:"G",c:"#34A853",n:"Google Organik",s:"1. sayfa",pos:"#7",d:"-1",dc:"down",sp:[5,6,6,7,6,7,7]},
+ {ic:"◉",c:"#EA4335",n:"Google Haritalar",s:"yakın çevre",pos:"#4",d:"+1",dc:"up",sp:[7,6,6,5,5,5,4]},
+ {ic:"M",c:"#C13584",n:"Meta / Instagram Reklam",s:"aktif kampanya · CTR",pos:"%3,8",d:"-0,6",dc:"down",sp:[4.4,4.3,4.2,4.4,4.0,3.9,3.8]},
+ {ic:"AI",c:"#12A594",n:"ChatGPT",s:"bahsedilme oranı",pos:"%42",d:"+11",dc:"up",sp:[18,22,25,28,33,38,42]},
+ {ic:"P",c:"#20808D",n:"Perplexity",s:"kaynak sırası",pos:"#2",d:"+1",dc:"up",sp:[5,4,4,3,3,2,2]},
+ {ic:"◆",c:"#886FF6",n:"Gemini",s:"öneri oranı",pos:"%28",d:"+5",dc:"up",sp:[12,15,18,20,23,26,28]},
+ {ic:"✦",c:"#F2B441",n:"Google AI Overview",s:"özet içi bağlantı",pos:"Var",d:"0",dc:"flat",sp:[0,0,1,1,1,1,1]},
+];
+$("#chanList").innerHTML=CHAN.map(c=>{
+  const dcol=c.dc==="up"?"var(--up)":c.dc==="down"?"var(--down)":"var(--flat)";
+  const arrow=c.dc==="up"?"▲":c.dc==="down"?"▼":"■";
+  return `<div class="chan">
+    <div class="ico" style="background:${c.c}">${c.ic}</div>
+    <div class="nm">${c.n}<small>${c.s}</small></div>
+    <div class="pos tnum">${c.pos}<div class="delta ${c.dc}" style="justify-content:flex-end">${arrow} ${c.d}</div></div>
+    <div class="spark">${spark(c.sp,dcol)}</div>
+  </div>`;
+}).join("");
+
+/* ---------- leaderboard ---------- */
+let COMP=[
+ {n:"Nişantaşı Diş Estetik",sub:"reklam · 4,9",score:82,rev:540,you:false},
+ {n:"Marmara Ağız & Diş",sub:"4,7",score:78,rev:410,you:false},
+ {n:"Levent İmplant Merkezi",sub:"reklam · 4,6",score:71,rev:355,you:false},
+ {n:"Boğaz Ağız & Diş Kliniği",sub:"sen · 4,8",score:68,rev:412,you:true},
+ {n:"Kadıköy Gülüş Kliniği",sub:"4,5",score:63,rev:288,you:false},
+ {n:"Şişli Diş Poliklinik",sub:"4,4",score:55,rev:190,you:false},
+];
+function renderLB(sort){
+  const rows=[...COMP].sort((a,b)=> sort==="reviews"? b.rev-a.rev : b.score-a.score);
+  $("#lb").innerHTML=rows.map((c,i)=>`
+    <div class="row ${c.you?'you':''}">
+      <span class="rk">${i+1}.</span>
+      <span class="co">${c.n}<small>${c.sub}</small></span>
+      <span class="scorebar"><i style="width:${c.score}%;background:${c.you?'var(--accent)':'var(--teal)'}"></i></span>
+      <span class="sc tnum">${sort==="reviews"?c.rev:c.score}</span>
+    </div>`).join("");
+}
+renderLB("score");
+$$(".sortbtn").forEach(b=>b.addEventListener("click",()=>{
+  $$(".sortbtn").forEach(x=>x.setAttribute("aria-pressed","false"));
+  b.setAttribute("aria-pressed","true");renderLB(b.dataset.sort);
+}));
+
+/* ---------- geo grid ---------- */
+const geoData=[3,2,1,4,7,12, 2,1,1,3,6,9, 4,3,2,5,8,11, 6,4,3,7,10,14, 9,7,5,8,12,16];
+const youIdx=15;
+$("#geo").innerHTML=geoData.map((r,i)=>{
+  const col=r<=3?"var(--up)":r<=10?"var(--gold)":"var(--down)";
+  return `<div class="t ${i===youIdx?'you':''}" style="background:${col}" title="Sıra #${r}">${r}</div>`;
+}).join("");
+
+/* ---------- AI prompts ---------- */
+const AIP=[
+ {q:"İstanbul'da en iyi diş implant kliniği",e:[["ChatGPT",1],["Perplexity",1],["Gemini",0]]},
+ {q:"Nişantaşı diş estetiği yorumları",e:[["ChatGPT",0],["Perplexity",1],["Gemini",1]]},
+ {q:"Şişli'de acil diş hekimi açık",e:[["ChatGPT",1],["Perplexity",0],["Gemini",0]]},
+];
+$("#aiList").innerHTML=AIP.map(p=>`
+  <div class="aiprompt">
+    <div class="q"><svg class="qi" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/><circle cx="12" cy="12" r="4"/></svg>"${p.q}"</div>
+    <div class="engines">${p.e.map(([nm,ok])=>`<span class="eng ${ok?'yes':'no'}"><span class="d"></span>${nm} · ${ok?'anılıyor':'yok'}</span>`).join("")}</div>
+  </div>`).join("");
+
+/* ---------- actions ---------- */
+const ACT=[
+ {t:"Google Business profilini haftalık güncelle",p:"12 yeni yorumu yanıtla, 3 yeni foto ekle — yerel paket sinyali.",imp:"hi",lift:"+8 skor"},
+ {t:"AEO için sık sorulan soru sayfaları yaz",p:"AI motorlarının alıntıladığı Q&A formatı — 'implant fiyatı', 'kaç seansta'.",imp:"hi",lift:"+11 AI"},
+ {t:"NAP tutarlılığını 40 dizinde düzelt",p:"İsim/adres/telefon uyumsuzlukları güveni ve haritayı düşürüyor.",imp:"md",lift:"+4 skor"},
+ {t:"Meta'da semt hedefli kampanya kur",p:"CTR düşüşünü telafi et; yeni görsel + 3 km yarıçap hedefleme.",imp:"md",lift:"+ dönüşüm"},
+ {t:"Yorum toplama otomasyonu bağla",p:"Randevu sonrası SMS ile puan iste — rakiplerin önündeki fark.",imp:"hi",lift:"+6 skor"},
+];
+$("#actions").innerHTML=ACT.map((a,i)=>`
+  <div class="action">
+    <button class="chk" aria-pressed="false" aria-label="Tamamlandı"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4"><path d="M4 12l5 5L20 6"/></svg></button>
+    <div class="txt"><h4>${a.t}</h4><p>${a.p}</p></div>
+    <div class="meta"><span class="pill ${a.imp}">${a.imp==="hi"?"Yüksek etki":"Orta etki"}</span><span class="lift">${a.lift}</span></div>
+  </div>`).join("");
+$$(".chk").forEach(c=>c.addEventListener("click",()=>c.setAttribute("aria-pressed",c.getAttribute("aria-pressed")==="true"?"false":"true")));
+
+/* ---------- templates ---------- */
+const TMPL=["[şehir]'da en iyi diş kliniği","diş implant fiyat [semt]","[marka] yorumları","acil diş hekimi [semt]","gülüş tasarımı [şehir]","7/24 açık diş kliniği","ortodonti uzmanı yakınımda","zirkonyum kaplama [şehir]"];
+const tmplEl=$("#tmpls"),tmplCount=$("#tmplCount");
+tmplEl.innerHTML=TMPL.map((t,i)=>`<button class="tmpl" aria-pressed="${i<3}" data-t="${t}">${t}<span class="x">${i<3?'✓':'+'}</span></button>`).join("");
+function updTmpl(){const n=$$('.tmpl[aria-pressed="true"]').length;tmplCount.textContent=n;}
+$$(".tmpl").forEach(b=>b.addEventListener("click",()=>{
+  const on=b.getAttribute("aria-pressed")==="true";b.setAttribute("aria-pressed",String(!on));
+  b.querySelector(".x").textContent=!on?"✓":"+";updTmpl();
+}));
+
+/* ---------- discover ---------- */
+const CATS=[
+ {k:"health",name:"Sağlık",color:"#12A594",icon:'<path d="M12 5v14M5 12h14"/>'},
+ {k:"law",name:"Hukuk",color:"#5B6EE1",icon:'<path d="M12 3v18M5 8l7-3 7 3"/>'},
+ {k:"hotel",name:"Otel",color:"#E39B1F",icon:'<path d="M3 20V6h13a4 4 0 0 1 4 4v10M3 12h17"/>'},
+ {k:"taxi",name:"Taksi",color:"#D9A70F",icon:'<path d="M5 11l1.5-4.5h11L19 11M5 11h14v6H5zM7 17v2M17 17v2"/>'},
+ {k:"museum",name:"Müze",color:"#B5539C",icon:'<path d="M3 9l9-5 9 5M5 10v7M19 10v7M3 20h18"/>'},
+ {k:"tour",name:"Gezi",color:"#FF6B4A",icon:'<path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11Z"/><circle cx="12" cy="10" r="2.4"/>'},
+];
+const CITY={ist:"İstanbul",rom:"Roma",ber:"Berlin"};
+const cmap=Object.fromEntries(CATS.map(c=>[c.k,c]));
+const DD=[
+ {c:"health",city:"ist",n:"Boğaz Ağız & Diş",t:"implant · estetik",r:4.8,d:0.4,o:1,s:1,x:44,y:38},
+ {c:"health",city:"ist",n:"Marmara Fizik Tedavi",t:"rehabilitasyon",r:4.6,d:1.2,o:1,s:0,x:66,y:30},
+ {c:"law",city:"ist",n:"Aksoy & Ortakları",t:"ticaret hukuku",r:4.9,d:0.9,o:1,s:1,x:58,y:54},
+ {c:"hotel",city:"ist",n:"Haliç View Hotel",t:"4 yıldız · manzara",r:4.6,d:0.7,o:1,s:1,x:72,y:60},
+ {c:"taxi",city:"ist",n:"VIP Havalimanı Transfer",t:"sabit fiyat",r:4.6,d:1.0,o:1,s:1,x:34,y:32},
+ {c:"museum",city:"ist",n:"Arkeoloji Müzesi",t:"antik koleksiyon",r:4.8,d:1.1,o:1,s:0,x:62,y:74},
+ {c:"tour",city:"ist",n:"Boğaz Tekne Turu",t:"2 saat rehberli",r:4.7,d:0.5,o:1,s:1,x:70,y:48},
+ {c:"health",city:"ist",n:"Nişantaşı Göz Merkezi",t:"lazer · katarakt",r:4.7,d:2.1,o:0,s:0,x:28,y:60},
+ {c:"museum",city:"rom",n:"Galleria Antica",t:"rönesans",r:4.9,d:0.6,o:1,s:1,x:50,y:40},
+ {c:"tour",city:"rom",n:"Antik Roma Yürüyüşü",t:"kolezyum + forum",r:4.8,d:0.4,o:1,s:1,x:36,y:30},
+ {c:"hotel",city:"rom",n:"Trastevere Boutique",t:"merkezi · kahvaltı",r:4.7,d:0.9,o:1,s:1,x:44,y:64},
+ {c:"taxi",city:"rom",n:"Roma Airport Transfer",t:"sabit tarife",r:4.4,d:0.7,o:1,s:0,x:28,y:52},
+ {c:"hotel",city:"ber",n:"Mitte Design Hotel",t:"merkez · modern",r:4.7,d:0.5,o:1,s:1,x:48,y:36},
+ {c:"museum",city:"ber",n:"Museum der Moderne",t:"modern sanat",r:4.8,d:0.8,o:1,s:0,x:62,y:52},
+ {c:"health",city:"ber",n:"Charité Nöbetçi Eczane",t:"akşam açık",r:4.5,d:0.3,o:1,s:1,x:38,y:28},
+ {c:"tour",city:"ber",n:"Duvar & Tarih Turu",t:"soğuk savaş",r:4.7,d:1.2,o:1,s:0,x:70,y:62},
+].map((e,i)=>({id:i,...e}));
+let DS={city:"ist",cat:"all"};
+$("#cities").innerHTML=Object.keys(CITY).map((k,i)=>`<button class="city" data-city="${k}" aria-pressed="${i===0}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11Z"/><circle cx="12" cy="10" r="2.5"/></svg>${CITY[k]}</button>`).join("");
+$("#cats").innerHTML=`<button class="catp" data-cat="all" aria-pressed="true">Tümü</button>`+CATS.map(c=>`<button class="catp" data-cat="${c.k}" aria-pressed="false"><span class="ci" style="background:${c.color}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${c.icon}</svg></span>${c.name}</button>`).join("");
+function drenderD(){
+  const rows=DD.filter(e=>e.city===DS.city&&(DS.cat==="all"||e.c===DS.cat)).sort((a,b)=>a.d-b.d);
+  $("#dlist").innerHTML=rows.length?rows.map(e=>{const cm=cmap[e.c];return `
+    <article class="dcard" data-id="${e.id}" tabindex="0">
+      <div class="pi" style="background:${cm.color}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">${cm.icon}</svg></div>
+      <div><h4>${e.n}</h4><div class="m"><span class="rt"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.3 6.8.7-5.1 4.6 1.4 6.7L12 17.8 6 20.9l1.4-6.7L2.3 9.6l6.8-.7z"/></svg>${e.r.toFixed(1)}</span><span style="color:${cm.color};font-weight:600">${cm.name}</span><span>${e.t}</span></div></div>
+      <div class="rgt"><span class="dist">${e.d.toFixed(1)} km</span>${e.s?'<span class="badge spon">Öne çıkan</span>':''}${e.o?'<span class="badge open">Açık</span>':''}</div>
+    </article>`;}).join(""):`<div style="padding:50px 20px;text-align:center;color:var(--ink-soft)">Bu seçim için örnek yok.</div>`;
+  $("#pins").innerHTML=rows.map(e=>{const cm=cmap[e.c];return `<button class="pin" data-id="${e.id}" style="left:${e.x}%;top:${e.y}%" aria-label="${e.n}"><span class="dm" style="background:${cm.color}"><span>${e.n[0]}</span></span></button>`;}).join("");
+  const hot=(id,on)=>$$(`.dcard[data-id="${id}"],.pin[data-id="${id}"]`).forEach(el=>el.classList.toggle("hot",on));
+  $$(".dcard").forEach(c=>{const id=c.dataset.id;c.onmouseenter=()=>hot(id,1);c.onmouseleave=()=>hot(id,0);c.onfocus=()=>hot(id,1);c.onblur=()=>hot(id,0);});
+  $$(".pin").forEach(p=>{const id=p.dataset.id;p.onmouseenter=()=>hot(id,1);p.onmouseleave=()=>hot(id,0);});
+}
+$$("#cities .city").forEach(b=>b.onclick=()=>{$$("#cities .city").forEach(x=>x.setAttribute("aria-pressed","false"));b.setAttribute("aria-pressed","true");DS.city=b.dataset.city;drenderD();});
+$("#cats").onclick=e=>{const b=e.target.closest(".catp");if(!b)return;$$(".catp").forEach(x=>{x.setAttribute("aria-pressed","false");x.style.color="";});b.setAttribute("aria-pressed","true");DS.cat=b.dataset.cat;if(DS.cat!=="all")b.style.color=cmap[DS.cat].color;drenderD();};
+const dmc=$("#dmapbg"),dm=dmc.getContext("2d");
+function drawDmap(){const w=dmc.width,h=dmc.height;dm.clearRect(0,0,w,h);const line=css('--line'),surf=css('--surface-3');
+  dm.fillStyle=surf;dm.globalAlpha=.6;[[.08,.1,.22,.16],[.4,.06,.2,.2],[.72,.12,.2,.14],[.1,.4,.16,.22],[.36,.36,.26,.2],[.72,.42,.2,.24],[.14,.72,.24,.18],[.5,.7,.22,.22]].forEach(b=>{dm.beginPath();dm.roundRect(b[0]*w,b[1]*h,b[2]*w,b[3]*h,12);dm.fill();});dm.globalAlpha=1;
+  dm.strokeStyle=line;dm.lineWidth=9;[[0,.3,1,.34],[0,.66,1,.62],[.32,0,.36,1],[.68,0,.64,1]].forEach(r=>{dm.beginPath();dm.moveTo(r[0]*w,r[1]*h);dm.lineTo(r[2]*w,r[3]*h);dm.stroke();});
+  dm.strokeStyle="rgba(38,150,196,.16)";dm.lineWidth=22;dm.lineCap="round";dm.beginPath();dm.moveTo(-20,h*.2);dm.bezierCurveTo(w*.3,h*.4,w*.5,h*.5,w+20,h*.85);dm.stroke();}
+drawDmap();addEventListener("resize",drawDmap);
+drenderD();
+
+/* ---------- theme ---------- */
+const root=document.documentElement;
+(function(){try{const t=localStorage.getItem("gauge-theme");if(t)root.setAttribute("data-theme",t);}catch(e){}})();
+$("#theme").onclick=()=>{const cur=root.getAttribute("data-theme");const dark=cur?cur==="dark":matchMedia("(prefers-color-scheme:dark)").matches;const nx=dark?"light":"dark";root.setAttribute("data-theme",nx);try{localStorage.setItem("gauge-theme",nx);}catch(e){}drawGauge(TARGET);drawDmap();};
+
+/* init */
+animateGauge();
+</script>
+
+</body>
+</html>

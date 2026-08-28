@@ -65,6 +65,19 @@ curl -X POST localhost:4000/locations/demo-1/actions/refresh
 Model varsayılanları: bahsedilme analizi `claude-haiku-4-5` (ucuz, yüksek hacim),
 içgörü/aksiyon `claude-opus-5`. `.env` ile değiştirilebilir.
 
+## Dağıtım
+
+Mimariye uygun olarak (bkz. doküman §2) iki ayrı hedef:
+
+**Web arayüzü → Vercel (statik).** `public/index.html` tamamen istemci-taraflı
+çalışan Gauge arayüzüdür; ekstra kurulum/build gerekmez. Repo Vercel'e bağlanınca
+`vercel.json` ile `public/` klasörü statik olarak yayınlanır. Her push otomatik
+dağıtım tetikler. Yerelden: `npx vercel --prod`.
+
+**API + worker → Fly.io / Render (Node servis).** `npm run api` ve `npm run worker`
+kalıcı süreçlerdir; Vercel serverless yerine bir konteyner/servis platformunda
+çalışır. Redis (kuyruk) ve PostgreSQL (Neon/Supabase) yönetilen servis olarak bağlanır.
+
 ## Notlar
 
 - Kalıcılık (`src/db/repo.ts`) `DATABASE_URL` yoksa no-op'a düşer — worker DB'siz
