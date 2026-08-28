@@ -1,0 +1,207 @@
+// Gauge — veritabanı şeması (bkz. mimari doküman §6).
+// İlişkisel çekirdek + zaman serisi tabloları. Zaman serileri (RankSnapshot,
+// AiMention, ScoreHistory) üretimde TimescaleDB hypertable'a çevrilir:
+//   SELECT create_hypertable('rank_snapshot', 'time');
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Plan {
+  free
+  starter
+  growth
+  agency
+}
+
+enum UserRole {
+  owner
+  analyst
+}
+
+enum ChannelType {
+  gbp
+  meta
+}
+
+enum Cadence {
+  daily
+  weekly
+}
+
+enum RankChannel {
+  local_pack
+  maps
+  organic
+}
+
+enum AiEngine {
+  chatgpt
+  perplexity
+  gemini
+  ai_overview
+}
+
+enum Sentiment {
+  positive
+  neutral
+  negative
+}
+
+enum ActionImpact {
+  high
+  medium
+  low
+}
+
+enum ActionStatus {
+  open
+  done
+}
+
+model Organization {
+  id           String        @id @default(cuid())
+  name         String
+  plan         Plan          @default(free)
+  createdAt    DateTime      @default(now())
+  users        User[]
+  locations    Location[]
+  subscription Subscription?
+}
+
+model User {
+  id     String   @id @default(cuid())
+  orgId  String
+  email  String   @unique
+  role   UserRole @default(owner)
+  org    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+}
+
+model Location {
+  id           String   @id @default(cuid())
+  orgId        String
+  name         String
+  category     String
+  lat          Float
+  lng          Float
+  nap          Json     // { name, address, phone }
+  createdAt    DateTime @default(now())
+
+  org          Organization        @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  connections  ChannelConnection[]
+  queries      TrackedQuery[]
+  competitors  Competitor[]
+  scores       ScoreHistory[]
+  actions      ActionItem[]
+
+  @@index([orgId])
+}
+
+model ChannelConnection {
+  id          String      @id @default(cuid())
+  locationId  String
+  type        ChannelType
+  // Üretimde şifreli saklanır (vault). MVP'de opak metin.
+  oauthTokens String
+  createdAt   DateTime    @default(now())
+  location    Location    @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@unique([locationId, type])
+}
+
+model TrackedQuery {
+  id          String   @id @default(cuid())
+  locationId  String
+  text        String
+  geoLat      Float?
+  geoLng      Float?
+  engines     AiEngine[]
+  cadence     Cadence  @default(weekly)
+  createdAt   DateTime @default(now())
+
+  location    Location       @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  rankSnaps   RankSnapshot[]
+  aiMentions  AiMention[]
+
+  @@index([locationId])
+}
+
+model Competitor {
+  id          String   @id @default(cuid())
+  locationId  String
+  name        String
+  placeId     String?
+  location    Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@index([locationId])
+}
+
+// --- zaman serisi (hypertable adayları) ---
+
+model RankSnapshot {
+  id        String      @id @default(cuid())
+  time      DateTime    @default(now())
+  queryId   String
+  channel   RankChannel
+  position  Int         // 0 = görünmüyor
+  geoCell   String?     // geo-grid hücresi "r{row}c{col}"
+  query     TrackedQuery @relation(fields: [queryId], references: [id], onDelete: Cascade)
+
+  @@index([queryId, time])
+}
+
+model AiMention {
+  id         String    @id @default(cuid())
+  time       DateTime  @default(now())
+  queryId    String
+  engine     AiEngine
+  mentioned  Boolean
+  rank       Int?      // cevaptaki sıra (null = anılmadı)
+  sentiment  Sentiment @default(neutral)
+  rawRef     String?   // ham cevabın deposundaki referans (denetim izi)
+  query      TrackedQuery @relation(fields: [queryId], references: [id], onDelete: Cascade)
+
+  @@index([queryId, time])
+}
+
+model ScoreHistory {
+  id          String   @id @default(cuid())
+  time        DateTime @default(now())
+  locationId  String
+  gauge       Int
+  google      Int
+  meta        Int
+  ai          Int
+  location    Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@index([locationId, time])
+}
+
+model ActionItem {
+  id            String       @id @default(cuid())
+  locationId    String
+  title         String
+  detail        String
+  impact        ActionImpact
+  expectedLift  String
+  status        ActionStatus @default(open)
+  createdAt     DateTime     @default(now())
+  location      Location     @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@index([locationId])
+}
+
+model Subscription {
+  id         String   @id @default(cuid())
+  orgId      String   @unique
+  stripeId   String?
+  plan       Plan     @default(free)
+  locations  Int      @default(1)
+  status     String   @default("active")
+  org        Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+}

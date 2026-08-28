@@ -1,0 +1,35 @@
+{
+  "name": "gauge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Gauge — Google, Meta ve AI aramalarındaki görünürlüğü tek skorda ölçen görünürlük SaaS'ı (MVP iskeleti).",
+  "engines": {
+    "node": ">=18.17"
+  },
+  "scripts": {
+    "demo": "tsx src/demo/aiEngineDemo.ts",
+    "api": "tsx src/api/server.ts",
+    "worker": "tsx src/queue/worker.ts",
+    "scheduler": "tsx src/queue/scheduler.ts",
+    "typecheck": "tsc --noEmit",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.68.0",
+    "@prisma/client": "^6.2.0",
+    "bullmq": "^5.34.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "ioredis": "^5.4.2",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.5",
+    "prisma": "^6.2.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}
