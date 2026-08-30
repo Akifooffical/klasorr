@@ -56,8 +56,9 @@ button{font-family:inherit;cursor:pointer}
 .tnum{font-variant-numeric:tabular-nums}
 
 /* animated background */
-#bgfx{position:fixed;inset:0;width:100%;height:100%;z-index:-2;pointer-events:none}
-.bg-veil{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden;background:
+#bgfx{position:fixed;inset:0;width:100%;height:100%;z-index:-3;pointer-events:none}
+.bg-veil{position:fixed;inset:0;z-index:-2;pointer-events:none;overflow:hidden;background:
+  linear-gradient(0deg,color-mix(in srgb,var(--bg) 46%,transparent),color-mix(in srgb,var(--bg) 46%,transparent)),
   radial-gradient(1200px 820px at 82% -8%,color-mix(in srgb,var(--accent) 6%,transparent),transparent 62%),
   radial-gradient(1000px 820px at -5% 106%,color-mix(in srgb,var(--teal) 5%,transparent),transparent 58%)}
 .bg-veil::before,.bg-veil::after{content:"";position:absolute;border-radius:50%;filter:blur(90px);opacity:.45}
@@ -577,34 +578,93 @@ function setView(v){
   window.scrollTo({top:0,behavior:reduce?"auto":"smooth"});
   if(v==="dash") animateGauge();
   if(v==="discover") drawDmap();
+  if(window.__gaugeScene) window.__gaugeScene(v);
 }
 $$(".tab").forEach(t=>t.addEventListener("click",()=>setView(t.dataset.view)));
 $$("[data-go]").forEach(b=>b.addEventListener("click",e=>{e.preventDefault();setView(b.dataset.go);}));
 
-/* ---------- animated background (drifting node mesh) ---------- */
-const bg=$("#bgfx"), bx=bg.getContext("2d");
-let W,H,DPR,nodes=[];
 function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
 function hexA(hex,a){hex=hex.replace('#','');if(hex.length===3)hex=hex.split('').map(c=>c+c).join('');const n=parseInt(hex,16);return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`;}
-function sizeBg(){DPR=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;bg.width=W*DPR;bg.height=H*DPR;bx.setTransform(DPR,0,0,DPR,0,0);
-  const count=Math.min(52,Math.round(W*H/32000));
-  nodes=Array.from({length:count},()=>({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.14,vy:(Math.random()-.5)*.14,r:Math.random()*1.6+1}));
-}
-function drawBg(){
-  bx.clearRect(0,0,W,H);
-  const acc=css('--accent')||'#FF6B4A', tl=css('--teal')||'#12A594', ink=css('--ink-faint')||'#8A949C';
-  for(let i=0;i<nodes.length;i++){const p=nodes[i];p.x+=p.vx;p.y+=p.vy;
-    if(p.x<-20)p.x=W+20;if(p.x>W+20)p.x=-20;if(p.y<-20)p.y=H+20;if(p.y>H+20)p.y=-20;}
-  for(let i=0;i<nodes.length;i++){for(let j=i+1;j<nodes.length;j++){
-    const a=nodes[i],b=nodes[j],dx=a.x-b.x,dy=a.y-b.y,d=Math.hypot(dx,dy);
-    if(d<145){const al=(1-d/145)*.07;bx.strokeStyle=hexA(ink,al);bx.lineWidth=1;bx.beginPath();bx.moveTo(a.x,a.y);bx.lineTo(b.x,b.y);bx.stroke();}
-  }}
-  nodes.forEach((p,i)=>{const col=i%9===0?acc:i%6===0?tl:ink;bx.fillStyle=hexA(col,i%9===0?.26:.14);bx.beginPath();bx.arc(p.x,p.y,p.r,0,7);bx.fill();});
-}
-function loopBg(){drawBg();requestAnimationFrame(loopBg);}
-sizeBg();
-if(reduce)drawBg();else requestAnimationFrame(loopBg);
-addEventListener("resize",sizeBg);
+
+/* ---------- rota/sekme bazlı canlı WebGL arka plan (handoff) ----------
+   6 prosedürel GLSL sahne; sekme değişince 0.85 s çapraz geçiş; fare paralaksı;
+   açık/koyu tonlama; reduced-motion'da donar. WebGL yoksa yumuşak veil kalır. */
+const SCENE_BY_VIEW = { discover:1, dash:2, market:5, pricing:3 };
+// 0 signalFlow · 1 geoGridRadar · 2 prismaticDial · 3 layeredEngines · 4 onboardingStair · 5 competitorRadar
+(function initSceneBg(){
+  const canvas=$("#bgfx");
+  let gl=null;
+  try{ gl=canvas.getContext("webgl",{antialias:false,alpha:true,premultipliedAlpha:false})||canvas.getContext("experimental-webgl"); }catch(e){}
+  if(!gl){ canvas.style.display="none"; return; } // fallback: .bg-veil kalır
+
+  const VERT="attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}";
+  const FRAG=[
+"precision highp float;",
+"uniform vec2 uRes;uniform float uTime;uniform vec2 uMouse;uniform float uLight;uniform float uAlpha;uniform int uScene;",
+"#define PI 3.14159265",
+"const vec3 SIG=vec3(.545,.424,1.);const vec3 GLD=vec3(.2,.878,.839);const vec3 ACC=vec3(1.,.361,.541);const vec3 INK=vec3(.027,.027,.047);",
+"float hash(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}",
+"float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);float a=hash(i),b=hash(i+vec2(1,0)),c=hash(i+vec2(0,1)),d=hash(i+vec2(1,1));return mix(mix(a,b,f.x),mix(c,d,f.x),f.y);}",
+"float fbm(vec2 p){float s=0.,a=.5;for(int i=0;i<5;i++){s+=a*noise(p);p*=2.02;a*=.5;}return s;}",
+"vec3 tone(vec3 c){float l=clamp(dot(c,vec3(.333)),0.,1.);vec3 lt=mix(vec3(.953,.949,.949),c*1.15,l);return mix(c,lt,uLight);}",
+"vec3 signalFlow(vec2 uv){vec2 c=uMouse*0.35;vec2 q=uv-c;float r=length(q);float ang=atan(q.y,q.x);vec3 col=INK*0.7;",
+"  float pk=pow(max(0.,1.-abs(fract(r*4.0-uTime*0.5)-0.5)*2.0),6.0);float st=0.5+0.5*sin(ang*8.0+uTime*0.4);col+=mix(SIG,ACC,st)*pk*(0.5+0.5*st);",
+"  col+=mix(SIG,GLD,0.5)*exp(-r*5.5)*0.9;col+=SIG*0.06*fbm(uv*3.0+uTime*0.05);return col;}",
+"vec3 geoGridRadar(vec2 uv){vec3 col=INK*0.7;vec2 g=uv;g.y+=0.25+uMouse.y*0.08;float persp=1.0/(g.y*1.6+1.2);vec2 gp=vec2(g.x*persp*4.0+uTime*0.1,persp*5.0-uTime*0.2);",
+"  vec2 gf=abs(fract(gp)-0.5);float line=smoothstep(0.46,0.5,max(gf.x,gf.y));col+=SIG*line*clamp(persp,0.,1.)*0.5;",
+"  float r=length(uv);float scan=exp(-abs(r-fract(uTime*0.18)*1.2)*10.0);col+=GLD*scan*0.5;",
+"  for(int i=0;i<6;i++){float fx=(hash(vec2(float(i),1.0))-0.5)*1.6;float h=0.2+hash(vec2(float(i),2.0))*0.5;float d=abs(uv.x-fx);float col2=smoothstep(0.012,0.0,d)*step(uv.y,-0.1+h)*step(-0.4,uv.y);col+=ACC*col2*0.5;}return col;}",
+"vec3 prismaticDial(vec2 uv){vec3 col=INK*0.7;vec2 p=uv;p.y+=0.15+uMouse.y*0.1;p.x+=uMouse.x*0.05;float r=length(p);float ang=atan(p.y,p.x);float up=step(0.0,p.y);",
+"  float band=smoothstep(0.035,0.0,abs(r-0.5));float t=clamp(ang/PI,0.,1.);float nt=0.5+0.32*sin(uTime*0.6);",
+"  col+=mix(ACC,GLD,t)*band*up*0.35;col+=GLD*band*up*step(t,nt)*0.7;",
+"  float theta=PI*(1.0-nt);float nd=abs(ang-theta);col+=ACC*smoothstep(0.04,0.0,nd)*smoothstep(0.55,0.0,r)*up;return col;}",
+"vec3 layeredEngines(vec2 uv){vec3 col=INK*0.7;for(int i=0;i<4;i++){float fi=float(i);float bc=-0.34+fi*0.22+uMouse.y*0.04*(fi-1.5);float d=abs(uv.y-bc);float plane=smoothstep(0.06,0.0,d);",
+"    vec3 ec=i==0?SIG:i==1?GLD:i==2?ACC:mix(SIG,ACC,0.5);float val=0.5+0.5*sin(uv.x*2.5+fi*1.7+uTime*0.5);col+=ec*plane*(0.25+0.55*step(uv.x,-0.55+val*1.1));}",
+"  float sx=(fract(uTime*0.12)*2.0-1.0);col+=vec3(1.0)*smoothstep(0.02,0.0,abs(uv.x-sx))*0.18;return col;}",
+"vec3 onboardingStair(vec2 uv){vec3 col=INK*0.7;for(int i=0;i<6;i++){float fi=float(i);float sx=-0.6+fi*0.22;float sy=-0.45+fi*0.16;float d=length((uv-vec2(sx,sy))/vec2(1.4,1.0));",
+"    float lit=0.5+0.5*sin(uTime*0.8-fi*0.9);float step2=smoothstep(0.18,0.0,d)*(0.3+0.7*lit);col+=mix(SIG,GLD,fi/5.0)*step2*0.5;col+=GLD*exp(-abs(d-0.14)*14.0)*lit*0.3;}return col;}",
+"vec3 competitorRadar(vec2 uv){vec3 col=INK*0.7;float r=length(uv);float ang=atan(uv.y,uv.x);",
+"  col+=SIG*smoothstep(0.02,0.0,abs(fract(r*4.0)-0.5))*0.12*step(r,0.95);",
+"  float sa=uTime*0.8;float d=mod(ang-sa,6.2831853);col+=GLD*exp(-d*3.0)*step(r,0.9)*0.6;",
+"  for(int i=0;i<9;i++){float fi=float(i);float bi=fi*0.6981;float br=0.22+mod(fi*0.13,0.6);vec2 bp=vec2(cos(bi),sin(bi))*br;float bd=length(uv-bp);float ph=exp(-mod(sa-bi,6.2831853)*1.4);col+=ACC*exp(-bd*42.0)*(0.35+ph*0.9);}return col;}",
+"vec3 renderScene(int s,vec2 uv){if(s==0)return signalFlow(uv);if(s==1)return geoGridRadar(uv);if(s==2)return prismaticDial(uv);if(s==3)return layeredEngines(uv);if(s==4)return onboardingStair(uv);return competitorRadar(uv);}",
+"void main(){vec2 uv=(gl_FragCoord.xy-0.5*uRes)/uRes.y;vec3 col=renderScene(uScene,uv);col=tone(col);float vig=1.0-smoothstep(0.6,1.3,length(uv));col*=mix(0.72,1.0,vig);gl_FragColor=vec4(col,uAlpha);}"
+].join("\n");
+
+  function sh(type,src){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)){console.warn("shader:",gl.getShaderInfoLog(s));return null;}return s;}
+  const vs=sh(gl.VERTEX_SHADER,VERT),fs=sh(gl.FRAGMENT_SHADER,FRAG);
+  if(!vs||!fs){canvas.style.display="none";return;}
+  const prog=gl.createProgram();gl.attachShader(prog,vs);gl.attachShader(prog,fs);gl.linkProgram(prog);
+  if(!gl.getProgramParameter(prog,gl.LINK_STATUS)){console.warn("link:",gl.getProgramInfoLog(prog));canvas.style.display="none";return;}
+  gl.useProgram(prog);
+  const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+  const pl=gl.getAttribLocation(prog,"p");gl.enableVertexAttribArray(pl);gl.vertexAttribPointer(pl,2,gl.FLOAT,false,0,0);
+  const U=n=>gl.getUniformLocation(prog,n);
+  const uRes=U("uRes"),uTime=U("uTime"),uMouse=U("uMouse"),uLight=U("uLight"),uScene=U("uScene"),uAlpha=U("uAlpha");
+  gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+  let VW=0,VH=0;
+  function resize(){const dpr=Math.min(devicePixelRatio||1,1.75);VW=canvas.width=Math.floor(innerWidth*dpr);VH=canvas.height=Math.floor(innerHeight*dpr);gl.viewport(0,0,VW,VH);}
+  resize();addEventListener("resize",resize);
+  const pointer={x:0,y:0},target={x:0,y:0};
+  addEventListener("pointermove",e=>{target.x=e.clientX/innerWidth-0.5;target.y=-(e.clientY/innerHeight-0.5);},{passive:true});
+  function lightVal(){const t=root.getAttribute("data-theme");if(t)return t==="dark"?0:1;return matchMedia("(prefers-color-scheme:dark)").matches?0:1;}
+  // başlangıç sahnesi: seçili sekmeden
+  const active=(document.querySelector('.tab[aria-selected="true"]')||{}).dataset;
+  let cur=(active&&SCENE_BY_VIEW[active.view]!=null)?SCENE_BY_VIEW[active.view]:2;
+  let next=cur,fade=1,fading=false,clock=6.0,last=performance.now();
+  window.__gaugeScene=function(v){const s=SCENE_BY_VIEW[v];if(s==null||s===next)return;if(fading){cur=next;}next=s;fade=0;fading=true;};
+  function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;
+    if(!reduce)clock+=dt;
+    pointer.x+=(target.x-pointer.x)*0.06;pointer.y+=(target.y-pointer.y)*0.06;
+    if(fading){fade+=dt/0.85;if(fade>=1){fade=1;fading=false;cur=next;}}
+    gl.uniform2f(uRes,VW,VH);gl.uniform1f(uTime,clock);gl.uniform2f(uMouse,pointer.x,pointer.y);gl.uniform1f(uLight,lightVal());
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.uniform1i(uScene,cur);gl.uniform1f(uAlpha,1.0);gl.drawArrays(gl.TRIANGLES,0,3);
+    if(fading){gl.uniform1i(uScene,next);gl.uniform1f(uAlpha,fade);gl.drawArrays(gl.TRIANGLES,0,3);}
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
 
 /* ---------- gauge ---------- */
 const gc=$("#gauge"),g2=gc.getContext("2d"),gNum=$("#gaugeNum"),TARGET=68;

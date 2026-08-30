@@ -70,7 +70,10 @@ içgörü/aksiyon `claude-opus-5`. `.env` ile değiştirilebilir.
 Mimariye uygun olarak (bkz. doküman §2) iki ayrı hedef:
 
 **Web arayüzü → Vercel (statik).** `public/index.html` tamamen istemci-taraflı
-çalışan Gauge arayüzüdür; ekstra kurulum/build gerekmez. Repo Vercel'e bağlanınca
+çalışan Gauge arayüzüdür; ekstra kurulum/build gerekmez. Arka plan, sekmeye göre
+değişen **çok-sahneli canlı WebGL sistemi**dir (6 prosedürel GLSL sahne, 0.85 s
+çapraz geçiş, fare paralaksı, açık/koyu tonlama, `prefers-reduced-motion`; WebGL
+yoksa yumuşak gradyana düşer). Tasarım spesifikasyonu: `design/BACKGROUND-HANDOFF.md`. Repo Vercel'e bağlanınca
 `vercel.json` ile `public/` klasörü statik olarak yayınlanır. Her push otomatik
 dağıtım tetikler. Yerelden: `npx vercel --prod`.
 
