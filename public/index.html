@@ -628,7 +628,7 @@ const SCENE_BY_VIEW = { discover:1, dash:2, market:5, pricing:3 };
 "  float sa=uTime*0.8;float d=mod(ang-sa,6.2831853);col+=GLD*exp(-d*3.0)*step(r,0.9)*0.6;",
 "  for(int i=0;i<9;i++){float fi=float(i);float bi=fi*0.6981;float br=0.22+mod(fi*0.13,0.6);vec2 bp=vec2(cos(bi),sin(bi))*br;float bd=length(uv-bp);float ph=exp(-mod(sa-bi,6.2831853)*1.4);col+=ACC*exp(-bd*42.0)*(0.35+ph*0.9);}return col;}",
 "vec3 renderScene(int s,vec2 uv){if(s==0)return signalFlow(uv);if(s==1)return geoGridRadar(uv);if(s==2)return prismaticDial(uv);if(s==3)return layeredEngines(uv);if(s==4)return onboardingStair(uv);return competitorRadar(uv);}",
-"void main(){vec2 uv=(gl_FragCoord.xy-0.5*uRes)/uRes.y;vec3 base=INK*0.7;vec3 col=renderScene(uScene,uv);col=base+(col-base)*1.9;col=tone(col);float vig=1.0-smoothstep(0.7,1.45,length(uv));col*=mix(0.9,1.0,vig);gl_FragColor=vec4(col,uAlpha);}"
+"void main(){vec2 uv=(gl_FragCoord.xy-0.5*uRes)/uRes.y;vec3 base=INK*0.7;vec3 col=renderScene(uScene,uv);col=base+(col-base)*2.3;col=tone(col);float vig=1.0-smoothstep(0.7,1.45,length(uv));col*=mix(0.9,1.0,vig);gl_FragColor=vec4(col,uAlpha);}"
 ].join("\n");
 
   function sh(type,src){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)){console.warn("shader:",gl.getShaderInfoLog(s));return null;}return s;}
@@ -653,7 +653,10 @@ const SCENE_BY_VIEW = { discover:1, dash:2, market:5, pricing:3 };
   let cur=(active&&SCENE_BY_VIEW[active.view]!=null)?SCENE_BY_VIEW[active.view]:2;
   let next=cur,fade=1,fading=false,clock=6.0,last=performance.now();
   window.__gaugeScene=function(v){const s=SCENE_BY_VIEW[v];if(s==null||s===next)return;if(fading){cur=next;}next=s;fade=0;fading=true;};
-  function frame(now){const dt=Math.min(0.05,(now-last)/1000);last=now;
+  let running=true;
+  function frame(now){
+    if(!running)return;
+    const dt=Math.min(0.05,(now-last)/1000);last=now;
     if(!reduce)clock+=dt;
     pointer.x+=(target.x-pointer.x)*0.06;pointer.y+=(target.y-pointer.y)*0.06;
     if(fading){fade+=dt/0.85;if(fade>=1){fade=1;fading=false;cur=next;}}
@@ -663,6 +666,11 @@ const SCENE_BY_VIEW = { discover:1, dash:2, market:5, pricing:3 };
     if(fading){gl.uniform1i(uScene,next);gl.uniform1f(uAlpha,fade);gl.drawArrays(gl.TRIANGLES,0,3);}
     requestAnimationFrame(frame);
   }
+  // Sekme gizliyken çizimi durdur (performans); geri gelince sürdür.
+  document.addEventListener("visibilitychange",()=>{
+    if(document.hidden){running=false;}
+    else if(!running){running=true;last=performance.now();requestAnimationFrame(frame);}
+  });
   requestAnimationFrame(frame);
 })();
 
